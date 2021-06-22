@@ -1,5 +1,5 @@
 from flask import *
-import os
+import os ,hashlib ,os ,sqlite3
 app = Flask(__name__)
 # Session which allows you to store information specific to a user from one request to the next. This is implemented on top of cookies for you and signs the cookies cryptographically. What this means is that the user could look at the contents of your cookie but not modify it, unless they know the secret key used for signing.
 app.secret_key = os.urandom(16)
@@ -9,7 +9,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route("/")
 def root():
-    return "SHOP-IT"
+    return render_template('home.html')
 
 @app.route("/add")
 def admin():
@@ -49,11 +49,23 @@ def updateProfile():
 
 @app.route("/loginForm")
 def loginForm():
-    pass
+    if 'email' in session:
+        return redirect(url_for('root'))
+    else:
+        return render_template('login.html',error='')
 
 @app.route("/login",methods=["POST","GET"])
 def login():
-    pass
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        if is_valid(email, password):
+            session['email'] = email
+            return redirect(url_for('root'))
+        else:
+            error = 'Invalid UserId / Password'
+            return render_template('login.html', error=error)
+
 
 @app.route("/productDescription")
 def productDescription():
@@ -76,15 +88,48 @@ def logout():
     pass
 
 def is_valid(email, password):
-    pass
+    con = sqlite3.connect('database.db')
+    cur = con.cursor()
+    cur.execute('SELECT email, password FROM users')
+    data = cur.fetchall()
+    for row in data:
+        if row[0] == email and row[1] == password:
+            return True
+    return False
 
 @app.route("/register", methods = ['GET', 'POST'])
 def register():
-    pass
+    if request.method == 'POST':
+        password = request.form['password']
+        first_name = request.form['fname']
+        last_name = request.form['lname']
+        email = request.form['email']
+        locality = request.form['address1']
+        landmark = request.form['address2']
+        pincode = request.form['pincode']
+        city = request.form['city']
+        state =request.form['state']
+        country = request.form['country']
+        phone = request.form['number']
+
+        with sqlite3.connect('database.db') as con:
+            try:
+                cur = con.cursor()
+                cur.execute('INSERT INTO users (password, email, firstName, lastName, address1, address2, zipcode, city, state, country, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (password, email, first_name, last_name, locality, landmark, pincode, city, state, country, phone))
+
+                con.commit()
+
+                msg = "Registered Successfully"
+            except:
+                con.rollback()
+                msg = "Error occured"
+        con.close()
+        return render_template("login.html", error=msg)
+
 
 @app.route("/registerationForm")
 def registerationForm():
-    pass
+    return render_template("register.html")
 
 def allowed_file(filename):
     pass
